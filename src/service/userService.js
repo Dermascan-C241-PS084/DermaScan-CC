@@ -32,7 +32,6 @@ const login = async (email, password) => {
     return { token, user: { name: user.name, email: user.email } };
 };
 
-
 module.exports = {
     register,
     login

@@ -1,7 +1,23 @@
+const Joi = require('@hapi/joi');
 const userService = require('../service/userService');
+
+const registerSchema = Joi.object({
+    name: Joi.string().required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required()
+});
+
+const loginSchema = Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required()
+});
 
 exports.register = async (request, h) => {
     try {
+        const { error } = registerSchema.validate(request.payload);
+        if (error) {
+            throw new Error(error.details[0].message);
+        }
         const { name, email, password } = request.payload;
         const result = await userService.register(name, email, password);
         return h.response(result).code(201);
@@ -12,18 +28,14 @@ exports.register = async (request, h) => {
 
 exports.login = async (request, h) => {
     try {
-        console.log('Request payload:', request.payload);
         const { error } = loginSchema.validate(request.payload);
         if (error) {
-            console.log('Validation error:', error.details[0].message);
             throw new Error(error.details[0].message);
         }
         const { email, password } = request.payload;
         const result = await userService.login(email, password);
         return h.response(result).code(200);
     } catch (err) {
-        console.log('Login error:', err.message);
         return h.response({ error: err.message }).code(400);
     }
 };
-

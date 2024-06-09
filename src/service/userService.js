@@ -1,3 +1,4 @@
+require('dotenv').config();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { firestore } = require('../service/firestore');
@@ -16,23 +17,53 @@ const register = async (name, email, password) => {
     return { message: 'User registered successfully' };
 };
 
+const jwtSecret = process.env.JWT_SECRET || 'default_secret_key';
+
 const login = async (email, password) => {
     const userDoc = await usersCollection.doc(email).get();
     if (!userDoc.exists) {
-        throw new Error('Invalid email or password');
+        return { error: true, message: 'Invalid email or password', loginResult: null };
     }
 
     const user = userDoc.data();
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-        throw new Error('Invalid email or password');
+        return { error: true, message: 'Invalid email or password', loginResult: null };
     }
 
-    const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    return { token, user: { name: user.name, email: user.email } };
+    const token = jwt.sign({ email: user.email }, jwtSecret, { expiresIn: '7d' });
+    const loginResult = {
+        userId: user.email,
+        name: user.name,
+        email: user.email,
+        password: password,
+        token: token
+    };
+    return { error: false, message: 'success', loginResult };
+};
+
+const updateUser = async (userId, name, password) => {
+    const userDoc = await usersCollection.doc(userId).get();
+    if (!userDoc.exists) {
+        throw new Error('User not found!');
+    }
+
+    const updates = {};
+    if (name) {
+        updates.name = name;
+    }
+    if (password) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        updates.password = hashedPassword;
+    }
+
+    await usersCollection.doc(userId).update(updates);
+
+    return { message: 'User updated successfully!' };
 };
 
 module.exports = {
     register,
-    login
+    login,
+    updateUser
 };
